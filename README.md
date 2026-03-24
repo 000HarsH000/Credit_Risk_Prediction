@@ -68,8 +68,8 @@ Instead of default classification, a custom threshold was applied:
 
 ##  Dataset
 
-Data is taken from https://www.kaggle.com/datasets/saurabhbadole/leading-indian-bank-and-cibil-real-world-dataset
-External_Cibil_Dataset, Internal_Bank_Dataset, Unseen_Dataset are the original dataset downloaded fron the above link.
-unknown_external_dataset, unknown_internal_dataset are the 500 datas randomly taken from External_Cibil_Dataset and Internal_Bank_Dataset respectively.
-train_external_dataset, train_internal_dataset are the remaining datapoints.
-Rest datasets are generated during preprocessing
+- Data is taken from https://www.kaggle.com/datasets/saurabhbadole/leading-indian-bank-and-cibil-real-world-dataset
+- External_Cibil_Dataset, Internal_Bank_Dataset, Unseen_Dataset are the original dataset downloaded fron the above link.
+- unknown_external_dataset, unknown_internal_dataset are the 500 datas randomly taken from External_Cibil_Dataset and Internal_Bank_Dataset - respectively.
+- train_external_dataset, train_internal_dataset are the remaining datapoints.
+- Rest datasets are generated during preprocessing

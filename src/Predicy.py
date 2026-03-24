@@ -12,6 +12,7 @@ DATA_PATH_2 = "data/unknown_internal_data.xlsx"
 MODEL_PATH = "model/model.pkl"
 SCALER_PATH = "model/scaler.pkl"
 FEATURE_PATH = "model/features.pkl"
+THRESHOLD_PATH = "model/threshold.pkl"
 
 
 # LOAD ARTIFACTS
@@ -19,7 +20,9 @@ def load_artifacts():
     model = joblib.load(MODEL_PATH)
     scaler = joblib.load(SCALER_PATH)
     feature_columns = joblib.load(FEATURE_PATH)
-    return model, scaler, feature_columns
+    threshold = joblib.load(THRESHOLD_PATH)   # 🔥 NEW
+
+    return model, scaler, feature_columns, threshold
 
 
 # LOAD DATA
@@ -34,21 +37,14 @@ def load_data(path_1, path_2):
     return df, prospect_ids
 
 
-# PREPROCESSING (same as train)
+# PREPROCESSING
 def pre_processing(df):
 
     df.replace(-99999, np.nan, inplace=True)
 
     cols_to_remove = [
-        "num_dbt_6mts",
-        "num_lss_6mts",
-        "num_sub_12mts",
-        "num_sub_6mts",
-        "num_sub",
-        "num_dbt", 
-        "num_dbt_12mts", 
-        "num_lss",  
-        "num_lss_12mts"
+        "num_dbt_6mts", "num_lss_6mts", "num_sub_12mts", "num_sub_6mts",
+        "num_sub", "num_dbt", "num_dbt_12mts", "num_lss", "num_lss_12mts"
     ]
 
     df.drop(columns=cols_to_remove, inplace=True)
@@ -59,7 +55,7 @@ def pre_processing(df):
     return df
 
 
-# FEATURE ENGINEERING (same as train)
+# FEATURE ENGINEERING
 def create_feature(df):
 
     df["active_loan_ratio"] = df["Tot_Active_TL"] / (df["Total_TL"] + 1)
@@ -72,7 +68,6 @@ def create_feature(df):
     df["loan_income_ratio"].replace([np.inf, -np.inf], np.nan, inplace=True)
     df["loan_income_ratio"].fillna(df["loan_income_ratio"].median(), inplace=True)
 
-    # FLAG ENGINEERING
     flag_cols = ["HL_Flag", "GL_Flag", "PL_Flag", "CC_Flag"]
 
     df["total_loan_flags"] = df[flag_cols].sum(axis=1)
@@ -84,7 +79,7 @@ def create_feature(df):
     return df
 
 
-# ENCODING (same as train but NO target mapping)
+# ENCODING
 def encoding(df):
 
     df["MARITALSTATUS"] = df["MARITALSTATUS"].map({
@@ -131,7 +126,7 @@ def align_features(X, feature_columns):
     return X
 
 
-# SCALING (same fixed columns)
+# SCALING
 def feature_scaling(X, scaler):
 
     scale_cols = [
@@ -145,20 +140,33 @@ def feature_scaling(X, scaler):
     return X
 
 
-# PREDICT
-def predict(model, X):
+# PREDICT (UPDATED 🔥)
+def predict(model, X, threshold):
 
     probs = model.predict_proba(X)
     probs_percent = np.round(probs * 100, 2)
 
-    return probs_percent
+    results = []
+
+    for i in range(len(X)):
+
+        prob = probs_percent[i]
+        risk_score = prob[3]  # P4 probability
+
+        decision = "High Risk" if risk_score > threshold * 100 else "Low/Medium Risk"
+
+        results.append([
+            prob[0], prob[1], prob[2], prob[3], decision
+        ])
+
+    return results
 
 
 # MAIN
 def main():
 
     print("Loading model...")
-    model, scaler, feature_columns = load_artifacts()
+    model, scaler, feature_columns, threshold = load_artifacts()
 
     print("Loading data...")
     df, prospect_ids = load_data(DATA_PATH_1, DATA_PATH_2)
@@ -179,17 +187,15 @@ def main():
     df = feature_scaling(df, scaler)
 
     print("Predicting...")
-    probs_percent = predict(model, df)
+    results = predict(model, df, threshold)
 
-    result = pd.DataFrame({
-        "PROSPECTID": prospect_ids,
-        "P1_prob": probs_percent[:, 0],
-        "P2_prob": probs_percent[:, 1],
-        "P3_prob": probs_percent[:, 2],
-        "P4_prob": probs_percent[:, 3]
-    })
+    result_df = pd.DataFrame(results, columns=[
+        "P1_prob", "P2_prob", "P3_prob", "P4_prob", "Risk_Category"
+    ])
 
-    print(result.head(10))
+    result_df["PROSPECTID"] = prospect_ids.values
+
+    print(result_df.head(10))
 
 
 if __name__ == "__main__":

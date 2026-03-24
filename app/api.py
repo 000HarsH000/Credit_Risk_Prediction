@@ -30,15 +30,10 @@ async def predict(
     df = df.drop(columns=["PROSPECTID"])
 
     # Predict
-    probs = predict_from_dataframe(df)
+    results = predict_from_dataframe(df)
 
-    # Output
-    result = pd.DataFrame({
-        "PROSPECTID": prospect_ids,
-        "P1_prob": probs[:, 0],
-        "P2_prob": probs[:, 1],
-        "P3_prob": probs[:, 2],
-        "P4_prob": probs[:, 3]
-    })
+    # Add PROSPECTID to each result
+    for r, pid in zip(results, prospect_ids):
+        r["PROSPECTID"] = int(pid)
 
-    return result.to_dict(orient="records")
+    return results

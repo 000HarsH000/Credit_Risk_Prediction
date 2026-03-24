@@ -16,6 +16,7 @@ DATA_PATH_2 = "data/train_internal_data.xlsx"
 MODEL_PATH = "model/model.pkl"
 SCALER_PATH = "model/scaler.pkl"
 FEATURE_PATH = "model/features.pkl"
+THRESHOLD_PATH = "model/threshold.pkl"
 
 
 # LOAD DATA
@@ -142,6 +143,9 @@ def feature_scaling(X):
 # MODEL TRAINING
 def model_training(X, y):
 
+    class_counts = np.bincount(y)
+    scale_pos_wt = class_counts.max() / class_counts
+
     model = XGBClassifier(
         colsample_bytree=0.9,
         gamma=0,
@@ -152,7 +156,8 @@ def model_training(X, y):
         subsample=0.9,
         random_state=42,
         objective="multi:softprob",
-        num_class=4
+        num_class=4,
+        scale_pos_weight=scale_pos_wt
     )
 
     model.fit(X, y)
@@ -193,6 +198,10 @@ def main():
 
     print("Training model...")
     model = model_training(X_scaled, y)
+
+    print("Saving threshold...")
+    best_thresh = 0.15
+    joblib.dump(best_thresh, "model/threshold.pkl")
 
     print("Saving artifacts...")
     save_artifacts(model, scaler, X_scaled.columns)

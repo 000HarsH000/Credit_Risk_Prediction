@@ -3,21 +3,24 @@
 import joblib
 import pandas as pd
 import numpy as np
+import shap
 
 MODEL_PATH = "model/model.pkl"
 SCALER_PATH = "model/scaler.pkl"
 FEATURE_PATH = "model/features.pkl"
+THRESHOLD_PATH = "model/threshold.pkl"
 
 # Load once
 model = joblib.load(MODEL_PATH)
 scaler = joblib.load(SCALER_PATH)
 feature_columns = joblib.load(FEATURE_PATH)
+threshold = joblib.load(THRESHOLD_PATH)
 
+explainer = shap.TreeExplainer(model) 
 
 def predict_from_dataframe(df):
-
-    # ===== SAME STEPS AS YOUR predict.py =====
     
+    df=df.copy()
     df.replace(-99999, np.nan, inplace=True)
 
     cols_to_remove = [
@@ -77,4 +80,37 @@ def predict_from_dataframe(df):
     probs = model.predict_proba(df)
     probs = np.round(probs * 100, 2)
 
-    return probs
+    # SHAP values
+    shap_values = explainer(df)
+
+    results = []
+
+    for i in range(len(df)):
+
+        prob = probs[i]
+        risk_score = prob[3]  # P4
+
+        # Applying threshold
+        decision = "High Risk" if risk_score > threshold * 100 else "Low/Medium Risk"
+
+        # SHAP explanation (P4)
+        shap_row = shap_values.values[i, :, 3]
+
+        feature_importance = sorted(
+            zip(feature_columns, shap_row),
+            key=lambda x: abs(x[1]),
+            reverse=True
+        )[:3]
+
+        top_features = [f[0] for f in feature_importance]
+
+        results.append({
+            "P1_prob": float(prob[0]),
+            "P2_prob": float(prob[1]),
+            "P3_prob": float(prob[2]),
+            "P4_prob": float(prob[3]),
+            "risk_category": decision,
+            "top_features": top_features
+})
+
+    return results
